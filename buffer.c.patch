@@ -1,0 +1,68 @@
+*** buffer.c	Sun May 14 09:14:10 2006
+--- buffer.c.new	Sun May 14 10:26:44 2006
+***************
+*** 3287,3293 ****
+      int		width;
+      int		itemcnt;
+      int		curitem;
+!     int		groupitem[STL_MAX_ITEM];
+      int		groupdepth;
+      struct stl_item
+      {
+--- 3287,3294 ----
+      int		width;
+      int		itemcnt;
+      int		curitem;
+!     int		stl_max_item = 0;
+!     int		*groupitem;
+      int		groupdepth;
+      struct stl_item
+      {
+***************
+*** 3304,3310 ****
+  	    TabPage,
+  	    Trunc
+  	}		type;
+!     }		item[STL_MAX_ITEM];
+      int		minwid;
+      int		maxwid;
+      int		zeropad;
+--- 3305,3312 ----
+  	    TabPage,
+  	    Trunc
+  	}		type;
+!     }		*item;
+!     typedef	struct stl_item stl_item_t;
+      int		minwid;
+      int		maxwid;
+      int		zeropad;
+***************
+*** 3328,3333 ****
+--- 3330,3345 ----
+      }
+  #endif
+  
++     for ( n = 0 ; fmt != 0 && fmt[n] != NUL ; n++ )
++ 	if ( fmt[n] == '%' )
++ 	    stl_max_item++;
++     for ( n = 0 ; usefmt != 0 && usefmt[n] != NUL ; n++ )
++ 	if ( usefmt[n] == '%' )
++ 	    stl_max_item++;
++     stl_max_item *= 2; // overkill approximation
++     item = (stl_item_t *)lalloc((long_u)(stl_max_item * sizeof(stl_item_t) ), FALSE);
++     groupitem = (int *)lalloc((long_u)(stl_max_item * sizeof(int) ), FALSE);
++ 
+      if (fillchar == 0)
+  	fillchar = ' ';
+  #ifdef FEAT_MBYTE
+***************
+*** 4064,4069 ****
+--- 4076,4083 ----
+  	sp->userhl = 0;
+      }
+  
++     free(item);
++     free(groupitem);
+      return width;
+  }
+  #endif /* FEAT_STL_OPT */

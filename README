@@ -1,0 +1,3 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1543
+
+When compiled with this patch, Vim will allow the strings delivered via the 'tabline' option to wrap onto new lines.  It is up to the 'tabline' string or function to limit itself.   See TabLineSet.vim for an example of  a script which does this.

@@ -1,0 +1,41 @@
+*** window.c	Fri May 12 23:09:07 2006
+--- window.c.new	Sun May 14 10:30:38 2006
+***************
+*** 5552,5560 ****
+--- 5552,5563 ----
+  /*
+   * Return the number of lines used by the tab page line.
+   */
++ int		Tabline_rows = 1;
++ 
+      int
+  tabline_height()
+  {
++     int	    ret;
+  #ifdef FEAT_GUI_TABLINE
+      /* When the GUI has the tabline then this always returns zero. */
+      if (gui_use_tabline())
+***************
+*** 5562,5571 ****
+  #endif
+      switch (p_stal)
+      {
+! 	case 0: return 0;
+! 	case 1: return (first_tabpage->tp_next == NULL) ? 0 : 1;
+      }
+!     return 1;
+  }
+  
+  #endif /* FEAT_WINDOWS */
+--- 5565,5575 ----
+  #endif
+      switch (p_stal)
+      {
+! 	case 0: ret = 0; break ;
+! 	case 1: ret = (first_tabpage->tp_next == NULL) ? 0 : Tabline_rows;break;
+! 	default: ret = Tabline_rows;
+      }
+!     return ret;
+  }
+  
+  #endif /* FEAT_WINDOWS */

@@ -1,0 +1,12 @@
+*** vim.h	Sun May 14 09:37:32 2006
+--- vim.h.new	Sun May 14 10:30:15 2006
+***************
+*** 1430,1436 ****
+  #endif
+  
+  #define SHOWCMD_COLS 10			/* columns needed by shown command */
+- #define STL_MAX_ITEM 80			/* max nr of %<flag> in statusline */
+  
+  typedef void	    *vim_acl_T;		/* dummy to pass an ACL to a function */
+  
+--- 1430,1435 ----

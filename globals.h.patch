@@ -1,0 +1,24 @@
+*** globals.h	Fri May 12 23:39:15 2006
+--- globals.h.new	Sun May 14 10:27:36 2006
+***************
+*** 71,76 ****
+--- 71,79 ----
+   *	N == -999 for closing current tab page
+   */
+  EXTERN short	*TabPageIdxs INIT(= NULL);
++ 
++ # define TABLINE_MAX_ROWS 30
++ 
+  #endif
+  
+  EXTERN int	screen_Rows INIT(= 0);	    /* actual size of ScreenLines[] */
+***************
+*** 537,542 ****
+--- 540,546 ----
+  EXTERN tabpage_T    *first_tabpage;
+  EXTERN tabpage_T    *curtab;
+  EXTERN int	    redraw_tabline INIT(= FALSE);  /* need to redraw tabline */
++ EXTERN int	    Tabline_rows INIT(= 1);
+  #endif
+  
+  /*

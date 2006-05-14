@@ -1,0 +1,36 @@
+*** normal.c	Sun May 14 10:38:31 2006
+--- normal.c.new	Sun May 14 10:38:07 2006
+***************
+*** 2435,2441 ****
+  
+  #ifdef FEAT_WINDOWS
+      /* Check for clicking in the tab page line. */
+!     if (mouse_row == 0 && firstwin->w_winrow > 0)
+      {
+  	got_click = FALSE;	/* ignore mouse-up and drag events */
+  
+--- 2435,2441 ----
+  
+  #ifdef FEAT_WINDOWS
+      /* Check for clicking in the tab page line. */
+!     if (mouse_row < Tabline_rows && firstwin->w_winrow > 0)
+      {
+  	got_click = FALSE;	/* ignore mouse-up and drag events */
+  
+***************
+*** 2446,2452 ****
+  # endif
+  		&& mouse_col < Columns)
+  	{
+! 	    c1 = TabPageIdxs[mouse_col];
+  	    if (c1 >= 0)
+  	    {
+  		if ((mod_mask & MOD_MASK_MULTI_CLICK) == MOD_MASK_2CLICK)
+--- 2446,2452 ----
+  # endif
+  		&& mouse_col < Columns)
+  	{
+! 	    c1 = TabPageIdxs[ ( mouse_row * Columns ) + mouse_col];
+  	    if (c1 >= 0)
+  	    {
+  		if ((mod_mask & MOD_MASK_MULTI_CLICK) == MOD_MASK_2CLICK)

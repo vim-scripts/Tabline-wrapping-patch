@@ -1,0 +1,256 @@
+*** screen.c	Fri May 12 23:04:23 2006
+--- screen.c.new	Sun May 14 10:28:46 2006
+***************
+*** 5812,5832 ****
+      int		n;
+      int		len;
+      int		fillchar;
+!     char_u	buf[MAXPATHL];
+      char_u	*p;
+!     struct	stl_hlrec hltab[STL_MAX_ITEM];
+!     struct	stl_hlrec tabtab[STL_MAX_ITEM];
+      int		use_sandbox = FALSE;
+  
+      /* setup environment for the task at hand */
+      if (wp == NULL)
+      {
+! 	/* Use 'tabline'.  Always at the first line of the screen. */
+  	p = p_tal;
+  	row = 0;
+  	fillchar = ' ';
+  	attr = hl_attr(HLF_TPF);
+! 	maxwidth = Columns;
+  # ifdef FEAT_EVAL
+  	use_sandbox = was_set_insecurely((char_u *)"tabline", 0);
+  # endif
+--- 5812,5843 ----
+      int		n;
+      int		len;
+      int		fillchar;
+!     //char_u	buf[MAXPATHL];
+      char_u	*p;
+!     //struct	stl_hlrec hltab[STL_MAX_ITEM];
+!     //struct	stl_hlrec tabtab[STL_MAX_ITEM];
+!     typedef	struct	stl_hlrec stl_hlrec_t;
+!     stl_hlrec_t	*hltab;
+!     stl_hlrec_t	*tabtab;
+!     int		stl_max_item = 0;
+      int		use_sandbox = FALSE;
++     int		bufsize = TABLINE_MAX_ROWS * Columns;
++     //static char_u	*buf = 0;
++     char_u	buf[ TABLINE_MAX_ROWS * Columns ];
++ 
++     //buf = alloc( bufsize + 2 );
++     *buf = NUL;
+  
+      /* setup environment for the task at hand */
+      if (wp == NULL)
+      {
+! 	/* Use 'tabline'.  Always start at the first line of the screen. */
+  	p = p_tal;
+  	row = 0;
+  	fillchar = ' ';
+  	attr = hl_attr(HLF_TPF);
+! 	//maxwidth = Columns;
+! 	maxwidth = bufsize;
+  # ifdef FEAT_EVAL
+  	use_sandbox = was_set_insecurely((char_u *)"tabline", 0);
+  # endif
+***************
+*** 5895,5907 ****
+      if (maxwidth <= 0)
+  	return;
+  
+      width = build_stl_str_hl(wp == NULL ? curwin : wp,
+! 				buf, sizeof(buf),
+  				p, use_sandbox,
+  				fillchar, maxwidth, hltab, tabtab);
+      len = (int)STRLEN(buf);
+  
+!     while (width < maxwidth && len < sizeof(buf) - 1)
+      {
+  #ifdef FEAT_MBYTE
+  	len += (*mb_char2bytes)(fillchar, buf + len);
+--- 5906,5941 ----
+      if (maxwidth <= 0)
+  	return;
+  
++ 
++     if (p[0] == '%' && p[1] == '!')
++     {
++ 	p = eval_to_string_safe(p + 2, NULL, use_sandbox);
++ 	if (p == NULL)
++ 	    p = (char_u *)"";
++     }
++     for ( n = 0 ; p[n] != NUL ; n++ )
++ 	if ( p[n] == '%' )
++ 	    stl_max_item++;
++     stl_max_item *= 2; // overkill approximation
++ 
++     hltab = (stl_hlrec_t *)lalloc((long_u)(stl_max_item * sizeof(stl_hlrec_t) ), FALSE);
++     tabtab = (stl_hlrec_t *)lalloc((long_u)(stl_max_item * sizeof(stl_hlrec_t) ), FALSE);
++ 
+      width = build_stl_str_hl(wp == NULL ? curwin : wp,
+! 				buf, bufsize,
+  				p, use_sandbox,
+  				fillchar, maxwidth, hltab, tabtab);
++ 
++     if ( width < 1 || buf == NUL || *buf == NUL )
++     {
++ 	p_tal = NUL;
++ 	return;
++     }
++ 
+      len = (int)STRLEN(buf);
+  
+!     //while (width < maxwidth && len < sizeof(buf) - 1)
+!     while (width < maxwidth && len < ( bufsize - 1) )
+      {
+  #ifdef FEAT_MBYTE
+  	len += (*mb_char2bytes)(fillchar, buf + len);
+***************
+*** 5917,5925 ****
+--- 5951,6007 ----
+       */
+      curattr = attr;
+      p = buf;
++     int accum = 0;  // accumulated output to screen
++     int pad_accum = 0;
++     int tablen = 0;
++     int tabnr = 0;
++ 
++     if ( wp == NULL )
++ 	Tabline_rows = 1;
+      for (n = 0; hltab[n].start != NULL; n++)
+      {
+  	len = (int)(hltab[n].start - p);
++ 
++ 	// Handle tabline stuff, including wrapping.
++ 	if ( wp == NULL )
++ 	{
++ 	    tablen = 0;
++ 
++ 	    // If the start of the current hunk is part of new tab,
++ 	    // advance.
++ 	    if ( tabtab[tabnr].start != NULL
++ 		    &&  pad_accum + hltab[n].start >= tabtab[tabnr].start )
++ 	    {
++ 		// Set tablen to be used to calculate linebreaks below.
++ 		// Only check when tab changes to avoid splitting tabs.
++ 		if ( tabtab[tabnr+1].start != NULL )
++ 		    tablen = tabtab[tabnr+1].start - tabtab[tabnr].start;
++ 		tabnr++;
++ 	    }
++ 
++ 	    int check_tab_fits = accum + tablen + 1;
++ 	    if ( (int)( check_tab_fits / Columns ) > row  )
++ 	    {
++ 		int	i;
++ 		int	pad_len = Columns - col;
++ 
++ 		if ( row >= TABLINE_MAX_ROWS )
++ 		    break;
++ 
++ 		for ( i = tabnr - 1; tabtab[i].start != NULL ; i++ )
++ 		    tabtab[i].start += pad_len;
++ 
++ 		for ( ; col < Columns ; col++ )
++ 		    screen_putchar(fillchar, row, col, hl_attr(HLF_TPF) );
++ 
++ 		col = 0;
++ 		row = check_tab_fits / Columns;
++ 		accum += pad_len;
++ 		pad_accum += pad_len;
++ 		Tabline_rows = row + 1;
++ 	    }
++ 	    accum += len;
++ 	}
+  	screen_puts_len(p, len, row, col, curattr);
+  	col += vim_strnsize(p, len);
+  	p = hltab[n].start;
+***************
+*** 5944,5949 ****
+--- 6026,6039 ----
+  	len = 0;
+  	p = buf;
+  	fillchar = 0;
++ 
++ 	vim_free(TabPageIdxs);
++ 	TabPageIdxs = (short *)lalloc((long_u)(Tabline_rows * Columns * sizeof(short)), FALSE);
++ 	for (col = 0; col < Columns; ++col)
++ 	    TabPageIdxs[col] = 0;
++ 
++ 	col = 0;
++ 
+  	for (n = 0; tabtab[n].start != NULL; n++)
+  	{
+  	    len += vim_strnsize(p, (int)(tabtab[n].start - p));
+***************
+*** 5955,5960 ****
+--- 6045,6054 ----
+  	while (col < Columns)
+  	    TabPageIdxs[col++] = fillchar;
+      }
++ 
++     free(hltab);
++     free(tabtab);
++ 
+  }
+  
+  #endif /* FEAT_STL_OPT */
+***************
+*** 8849,8854 ****
+--- 8943,8949 ----
+  					    && !gui.in_use
+  #endif
+  					    );
++     static int	old_Tabline_rows = 1;
+  
+      redraw_tabline = FALSE;
+  
+***************
+*** 8862,8868 ****
+--- 8957,8970 ----
+  #endif
+  
+      if (tabline_height() < 1)
++     {
++ 	if ( tabline_height() != old_Tabline_rows )
++ 	{
++ 	    old_Tabline_rows = Tabline_rows;
++ 	    shell_new_rows();	/* recompute window positions and heights */
++ 	}
+  	return;
++     }
+  
+  #if defined(FEAT_STL_OPT)
+  
+***************
+*** 8887,8892 ****
+--- 8989,8996 ----
+      else
+  #endif
+      {
++ 	Tabline_rows = 1;
++ 
+  	for (tp = first_tabpage; tp != NULL; tp = tp->tp_next)
+  	    ++tabcount;
+  
+***************
+*** 9000,9005 ****
+--- 9104,9118 ----
+  	}
+      }
+  
++     if ( old_Tabline_rows != Tabline_rows )
++     {
++ 	old_Tabline_rows = Tabline_rows;
++ 	redraw_tabline = FALSE;
++ 	shell_new_rows();	/* recompute window positions and heights */
++     }
++ 
++     old_Tabline_rows = Tabline_rows;
++ 
+      /* Reset the flag here again, in case evaluating 'tabline' causes it to be
+       * set. */
+      redraw_tabline = FALSE;
